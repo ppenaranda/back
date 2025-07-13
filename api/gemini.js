@@ -1,25 +1,12 @@
 // /api/gemini.js
 export default async function handler(req, res) {
-    // CORS headers más completos y específicos
-    const allowedOrigins = [
-        'https://your-domain.com', // Reemplaza con tu dominio
-        'http://localhost:3000',
-        'http://127.0.0.1:5500', // Para Live Server
-        'http://localhost:5500', // Para Live Server alternativo
-        '*' // Solo para desarrollo, remover en producción
-    ];
-    
-    const origin = req.headers.origin;
-    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin || '*');
-    }
-    
-    // Headers CORS completos
+    // Forzar CORS para cualquier origen
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Max-Age', '86400'); // 24 horas
-    
+
     // Manejar preflight requests
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
