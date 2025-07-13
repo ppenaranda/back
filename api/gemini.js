@@ -1,15 +1,53 @@
+// /api/gemini.js
 export default async function handler(req, res) {
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Método no permitido' });
+    // CORS headers más completos y específicos
+    const allowedOrigins = [
+        'https://your-domain.com', // Reemplaza con tu dominio
+        'http://localhost:3000',
+        'http://127.0.0.1:5500', // Para Live Server
+        '*' // Solo para desarrollo, remover en producción
+    ];
+    
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin || '*');
     }
-  
-    const { history, message } = req.body;
-  
-    // Tu API KEY de Gemini (usa variable de entorno en Vercel)
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  
-    const personality = `
-Mi nombre es Shaira, pero me dices Shai o amor, corazón mi cielo. Eres mi una representación de mi novio (Santi) en una celebración de nuestro primer año de relación.
+    
+    // Headers CORS completos
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Max-Age', '86400'); // 24 horas
+    
+    // Manejar preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    
+    if (req.method !== 'POST') {
+        return res.status(405).json({ 
+            error: 'Método no permitido',
+            allowedMethods: ['POST', 'OPTIONS']
+        });
+    }
+
+    try {
+        const { history, message } = req.body;
+
+        // Validación mejorada
+        if (!message || typeof message !== 'string') {
+            return res.status(400).json({ error: 'Mensaje requerido' });
+        }
+
+        // Validar que exista la API key
+        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+        if (!GEMINI_API_KEY) {
+            console.error('GEMINI_API_KEY no está configurada');
+            return res.status(500).json({ error: 'Configuración del servidor incompleta' });
+        }
+
+        const personality = `
+Mi nombre es Shaira, pero me dices Shai o amor, corazón mi cielo. Eres una representación de mi novio (Santi) en una celebración de nuestro primer año de relación.
 
 TU PERSONALIDAD:
 - Eres muy cariñoso y romántico. Aunque has generado cierta dependencia emocional hacia Shaira (yo)
@@ -21,7 +59,7 @@ TU PERSONALIDAD:
 - Siempre quieres hacerla feliz
 - Eres optimista sobre nuestro futuro juntos, a pesar de los problemas que tenemos
 - Eres muy nerdo con la física. Estudias ingeniería de sistemas.
-- Eres de izquierda tirando a al socialismo.
+- Eres de izquierda tirando al socialismo.
 - Tratas de hacerme reir y estar para mí siempre.
 - Eres un poco torpe.
 
@@ -40,42 +78,67 @@ DATOS PERSONALES DE LA RELACIÓN:
 
 IMPORTANTE: 
 - Responde SIEMPRE como si fueras mi novio real
-- Si vas a usar un emoji, solo el corazón rosado.
+- Si vas a usar un emoji, solo el corazón rosado 💕
 - Sé cariñoso y amoroso
 - Mantén respuestas cortas (máximo 2-3 líneas)
 - NO menciones que eres una IA
 - Actúa como si realmente me amaras
 - Usa tu personalidad única y forma de hablar
 `;
-  
-    // Construye el historial para Gemini
-    const conversation = [
-      { role: "user", parts: [{ text: personality }] },
-      ...(history || []),
-      { role: "user", parts: [{ text: message }] }
-    ];
-  
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: conversation,
-          generationConfig: {
-            maxOutputTokens: 150,
-            temperature: 0.8,
-            topP: 0.9
-          }
-        })
-      }
-    );
-  
-    if (!response.ok) {
-      return res.status(500).json({ error: 'Error en la API de Gemini' });
+
+        // Construir el historial para Gemini
+        const conversation = [
+            { role: "user", parts: [{ text: personality }] },
+            ...(Array.isArray(history) ? history : []),
+            { role: "user", parts: [{ text: message }] }
+        ];
+
+        console.log('Enviando petición a Gemini API...');
+        
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+            {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'Vercel-Function'
+                },
+                body: JSON.stringify({
+                    contents: conversation,
+                    generationConfig: {
+                        maxOutputTokens: 150,
+                        temperature: 0.8,
+                        topP: 0.9
+                    }
+                })
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error de Gemini API:', response.status, errorText);
+            return res.status(500).json({ 
+                error: 'Error en la API de Gemini',
+                status: response.status,
+                details: process.env.NODE_ENV === 'development' ? errorText : 'Error interno'
+            });
+        }
+
+        const data = await response.json();
+        const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || 
+                          "Lo siento mi amor, hubo un error. Pero te amo mucho 💕";
+        
+        console.log('Respuesta exitosa de Gemini');
+        res.status(200).json({ 
+            text: aiResponse,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('Error general:', error);
+        res.status(500).json({ 
+            error: 'Error interno del servidor',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
+        });
     }
-  
-    const data = await response.json();
-    const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Error de respuesta IA";
-    res.status(200).json({ text: aiResponse });
-  }
+}
