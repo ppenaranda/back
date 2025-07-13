@@ -5,6 +5,7 @@ export default async function handler(req, res) {
         'https://your-domain.com', // Reemplaza con tu dominio
         'http://localhost:3000',
         'http://127.0.0.1:5500', // Para Live Server
+        'http://localhost:5500', // Para Live Server alternativo
         '*' // Solo para desarrollo, remover en producción
     ];
     
@@ -95,8 +96,9 @@ IMPORTANTE:
 
         console.log('Enviando petición a Gemini API...');
         
+        // Usar el modelo correcto de Gemini
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
             {
                 method: 'POST',
                 headers: { 

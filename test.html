@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Gemini</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 4px;
+        }
+        input {
+            width: 70%;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            min-height: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h2>🧪 Test API Gemini</h2>
+        <p>Prueba tu API de Gemini aquí:</p>
+        
+        <input type="text" id="messageInput" placeholder="Escribe un mensaje..." value="Hola mi amor">
+        <button onclick="testAPI()">Enviar</button>
+        
+        <div class="response" id="response">
+            Respuesta aparecerá aquí...
+        </div>
+    </div>
+
+    <script>
+        async function testAPI() {
+            const message = document.getElementById('messageInput').value;
+            const responseDiv = document.getElementById('response');
+            
+            responseDiv.textContent = 'Enviando...';
+            
+            try {
+                const response = await fetch('/api/gemini', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        history: []
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.textContent = `✅ Respuesta: ${data.text}`;
+                } else {
+                    responseDiv.textContent = `❌ Error: ${data.error || 'Error desconocido'}`;
+                }
+            } catch (error) {
+                responseDiv.textContent = `❌ Error de conexión: ${error.message}`;
+            }
+        }
+        
+        // Permitir Enter para enviar
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                testAPI();
+            }
+        });
+    </script>
+</body>
+</html> 
